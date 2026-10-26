@@ -12,6 +12,7 @@
 #include "geometry.hpp"
 #include "kinematics.hpp"
 #include "random.hpp"
+#include "source.hpp"
 #include "vec3.hpp"
 
 namespace py = pybind11;
@@ -118,4 +119,17 @@ PYBIND11_MODULE(_core, m) {
         .def("__len__", &Geometry::size);
 
     m.attr("VACUUM") = kVacuum;
+
+    py::class_<LineSampler>(m, "LineSampler")
+        .def(py::init<const std::vector<double>&, const std::vector<double>&>(),
+             py::arg("energy"), py::arg("intensity"))
+        .def("sample",
+             [](const LineSampler& s, py::ssize_t n, std::uint64_t seed) {
+                 Random rng(seed);
+                 py::array_t<double> out(n);
+                 auto r = out.mutable_unchecked<1>();
+                 for (py::ssize_t i = 0; i < n; ++i) r(i) = s.sample(rng);
+                 return out;
+             },
+             py::arg("n"), py::arg("seed"), "Draw n photon energies (keV).");
 }
