@@ -1,0 +1,15 @@
+name: albedo
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - cxx-compiler
+  - cmake
+  - ninja
+  - pybind11
+  - scikit-build-core
+  - numpy
+  - pandas
+  - matplotlib
+  - pytest
+  - ipykernel
