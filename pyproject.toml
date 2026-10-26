@@ -9,7 +9,7 @@ description = "Monte Carlo photon transport for understanding gamma-ray spectrum
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "Miguel Andrés Perdomo Gutiérrez", email = "mperdomog@unal.edu.co" }]
-dependencies = ["numpy", "pandas", "matplotlib"]
+dependencies = ["numpy", "pandas", "matplotlib", "plotly"]
 
 [project.optional-dependencies]
 test = ["pytest"]

@@ -26,6 +26,17 @@ COLORS = {
     "teal": (0.0, 0.3, 0.3),
 }
 
+# Colour of each material in geometry figures; vacuum is drawn white.
+MATERIAL_COLORS = {
+    "Pb": COLORS["gray"],
+    "Sn": COLORS["teal"],
+    "Cu": COLORS["orange"],
+    "CsI": COLORS["blue"],
+    "NaI": COLORS["purple"],
+}
+SOURCE_COLOR = COLORS["red"]
+FONT_FAMILY_HTML = "CMU Serif, Latin Modern Roman, Computer Modern, serif"
+
 
 def use_style(font_size: float = 18, usetex: bool = True, family: str = "serif") -> None:
     """Apply the ALBEDO figure style to matplotlib.
