@@ -1,0 +1,19 @@
+# Canberra 747E lead shield used at GFN-UN.
+#
+# Lengths in cm. Cavity dimensions refer to the free volume inside the
+# liner. The cavity height was measured on the shield in use; the other
+# dimensions are from Cristancho, Posada and Cuero, "Spectral structure in
+# gamma-ray backscattering" (preprint), Fig. 1.
+name = "Canberra 747E"
+
+cavity_diameter = 27.9
+cavity_height   = 30.2    # measured
+outer_diameter  = 50.8
+outer_height    = 63.5
+body = "Pb"
+
+# Graded liner covering wall, lid and floor, from the cavity outwards.
+liner = [
+    { material = "Cu", thickness = 0.16 },
+    { material = "Sn", thickness = 0.13 },
+]

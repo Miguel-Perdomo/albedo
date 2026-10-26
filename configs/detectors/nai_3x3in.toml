@@ -1,0 +1,5 @@
+# Housing, reflector and photomultiplier are not modelled.
+name = "NaI(Tl) 3 in x 3 in"
+material = "NaI"
+diameter = 7.62   # cm
+length   = 7.62   # cm

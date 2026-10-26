@@ -1,0 +1,12 @@
+# CsI(Tl) 0.5 in x 2 in inside the Canberra 747E shield.
+shield   = "canberra_747E"
+detector = "csi_0.5x2in"
+
+# Detector and source lie on the shield axis. Heights are measured from
+# the floor of the free cavity; lengths in cm.
+detector_face_height = 14.15   # front (upper) face of the crystal
+
+# Active centre of the source to the crystal face:
+# 0.2 (PLA housing) + 10.0 + 0.2 (source holder) + 0.15 (source acrylic).
+# With the 0.35 cm holder this becomes 10.70.
+source_distance = 10.55

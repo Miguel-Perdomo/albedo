@@ -1,5 +1,6 @@
 #include <array>
 #include <cstdint>
+#include <stdexcept>
 
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
@@ -8,6 +9,7 @@
 #include "attenuation.hpp"
 #include "compton.hpp"
 #include "direction.hpp"
+#include "geometry.hpp"
 #include "kinematics.hpp"
 #include "random.hpp"
 #include "vec3.hpp"
@@ -37,6 +39,15 @@ py::array_t<double> isotropic_directions(py::ssize_t n, std::uint64_t seed) {
     }
     return out;
 }
+
+Vec3 unit(const std::array<double, 3>& v) {
+    const Vec3 u{v[0], v[1], v[2]};
+    const double n = norm(u);
+    if (n == 0.0) throw std::invalid_argument("direction must be non-zero");
+    return (1.0 / n) * u;
+}
+
+Vec3 point(const std::array<double, 3>& v) { return {v[0], v[1], v[2]}; }
 
 std::array<double, 3> rotate_py(const std::array<double, 3>& d, double cos_theta, double phi) {
     const Vec3 v = rotate({d[0], d[1], d[2]}, cos_theta, phi);
@@ -78,4 +89,33 @@ PYBIND11_MODULE(_core, m) {
     m.def("rotate", &rotate_py,
           py::arg("direction"), py::arg("cos_theta"), py::arg("phi"),
           "Deflect a unit vector by polar angle theta and azimuth phi.");
+
+    py::class_<Geometry>(m, "Geometry")
+        .def(py::init<>())
+        .def("add_cylinder", &Geometry::add_cylinder,
+             py::arg("radius"), py::arg("z_min"), py::arg("z_max"), py::arg("material"),
+             "Append a solid cylinder; returns its volume index.")
+        .def("locate", [](const Geometry& g, const std::array<double, 3>& p) {
+                 return g.locate(point(p));
+             },
+             py::arg("point"), "Volume index containing the point, or -1 outside the world.")
+        .def("material", &Geometry::material, py::arg("volume"))
+        .def("distance_to_boundary",
+             [](const Geometry& g, const std::array<double, 3>& p, const std::array<double, 3>& d) {
+                 return g.distance_to_boundary(point(p), unit(d));
+             },
+             py::arg("point"), py::arg("direction"))
+        .def("trace",
+             [](const Geometry& g, const std::array<double, 3>& p, const std::array<double, 3>& d) {
+                 py::list out;
+                 for (const auto& s : trace(g, point(p), unit(d))) {
+                     out.append(py::make_tuple(s.volume, s.length));
+                 }
+                 return out;
+             },
+             py::arg("point"), py::arg("direction"),
+             "Straight path until leaving the world, as (volume, length) pairs.")
+        .def("__len__", &Geometry::size);
+
+    m.attr("VACUUM") = kVacuum;
 }
