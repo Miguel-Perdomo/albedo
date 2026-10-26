@@ -100,76 +100,97 @@ def section(setup: Setup, zoom: bool = True, width: float = 22.0, height: float 
 
 
 # --- interactive 3D view ----------------------------------------------------
+#
+# The r-z plane is divided into cells by every radius and every z plane of
+# the setup. Each cell is assigned the material of the volume containing
+# its centre (the same priority rule as the transport code). A surface is
+# drawn wherever a cell borders empty space (vacuum or outside the world),
+# and the cells themselves are drawn on the two faces exposed by the cut.
+# This works for any arrangement of cylinders, holes included.
 
-def _surface(x, y, z, color, name, show_legend, opacity):
+_OUTSIDE = object()
+
+
+def _material_at(setup: Setup, r: float, z: float):
+    for v in setup.volumes:
+        if v.contains(r, 0.0, z):
+            return v.material
+    return _OUTSIDE
+
+
+def _is_empty(material) -> bool:
+    return material is None or material is _OUTSIDE
+
+
+def _surface(x, y, z, material, legend):
     import plotly.graph_objects as go
 
+    color = to_hex(MATERIAL_COLORS.get(material, "lightgray"))
     return go.Surface(
         x=x, y=y, z=z,
         surfacecolor=np.zeros_like(z),
         colorscale=[[0.0, color], [1.0, color]],
         showscale=False,
-        opacity=opacity,
-        name=name,
-        legendgroup=name,
-        showlegend=show_legend,
+        name=material,
+        legendgroup=material,
+        showlegend=legend,
         hoverinfo="name",
     )
 
 
-def _hole(setup: Setup, i: int) -> Volume | None:
-    """Largest earlier volume contained in volume i (the cavity of a shell)."""
-    v = setup.volumes[i]
-    inner = [
-        w for w in setup.volumes[:i]
-        if w.radius <= v.radius and w.z_min >= v.z_min and w.z_max <= v.z_max
-    ]
-    return max(inner, key=lambda w: w.radius, default=None)
-
-
-def view3d(setup: Setup, cutaway: float = 120.0, opacity: float = 1.0, n_theta: int = 72):
+def view3d(setup: Setup, cutaway: float = 120.0, n_theta: int = 72):
     """Interactive 3D view with a wedge of ``cutaway`` degrees removed."""
     import plotly.graph_objects as go
 
+    radii = sorted({0.0, *(v.radius for v in setup.volumes)})
+    zs = sorted({z for v in setup.volumes for z in (v.z_min, v.z_max)})
+    nr, nz = len(radii) - 1, len(zs) - 1
+
+    def cell(i, j):
+        if i >= nr or j < 0 or j >= nz:
+            return _OUTSIDE
+        return _material_at(setup, 0.5 * (radii[i] + radii[i + 1]), 0.5 * (zs[j] + zs[j + 1]))
+
+    grid = [[cell(i, j) for j in range(nz)] for i in range(nr)]
     t0 = np.radians(cutaway)
     theta = np.linspace(t0, 2.0 * np.pi, n_theta)
-    traces = []
-    seen = set()
+    traces, seen = [], set()
 
-    for i, v in enumerate(setup.volumes):
-        if v.material is None:
-            continue
-        color = _color(v)
-        first = v.material not in seen
-        seen.add(v.material)
+    def add(x, y, z, material):
+        traces.append(_surface(x, y, z, material, material not in seen))
+        seen.add(material)
 
-        # Outer side surface
-        th, zz = np.meshgrid(theta, [v.z_min, v.z_max])
-        traces.append(_surface(v.radius * np.cos(th), v.radius * np.sin(th), zz,
-                               color, v.material, first, opacity))
-        first = False
+    def visible(a, b):
+        """Material to draw on the interface between a and b, if any."""
+        if _is_empty(a) == _is_empty(b):
+            return None
+        return b if _is_empty(a) else a
 
-        # Top and bottom caps
-        rr, th = np.meshgrid([0.0, v.radius], theta)
-        for zc in (v.z_min, v.z_max):
-            traces.append(_surface(rr * np.cos(th), rr * np.sin(th), np.full_like(rr, zc),
-                                   color, v.material, False, opacity))
+    # Cylindrical interfaces at r = radii[i + 1]
+    for i in range(nr):
+        for j in range(nz):
+            m = visible(grid[i][j], cell(i + 1, j))
+            if m is not None:
+                th, zz = np.meshgrid(theta, [zs[j], zs[j + 1]])
+                add(radii[i + 1] * np.cos(th), radii[i + 1] * np.sin(th), zz, m)
 
-        # Faces exposed by the cut: the r-z section of the volume minus its hole
-        hole = _hole(setup, i)
-        if hole is None:
-            rects = [(0.0, v.radius, v.z_min, v.z_max)]
-        else:
-            rects = [
-                (hole.radius, v.radius, v.z_min, v.z_max),
-                (0.0, hole.radius, v.z_min, hole.z_min),
-                (0.0, hole.radius, hole.z_max, v.z_max),
-            ]
+    # Plane interfaces at z = zs[j]
+    for j in range(nz + 1):
+        for i in range(nr):
+            m = visible(cell(i, j - 1), cell(i, j))
+            if m is not None:
+                rr, th = np.meshgrid([radii[i], radii[i + 1]], theta)
+                add(rr * np.cos(th), rr * np.sin(th), np.full_like(rr, zs[j]), m)
+
+    # Faces exposed by the cut
+    if cutaway > 0.0:
         for angle in (t0, 2.0 * np.pi):
-            for r0, r1, z0, z1 in rects:
-                rr, zz = np.meshgrid([r0, r1], [z0, z1])
-                traces.append(_surface(rr * np.cos(angle), rr * np.sin(angle), zz,
-                                       color, v.material, False, opacity))
+            for i in range(nr):
+                for j in range(nz):
+                    m = grid[i][j]
+                    if not _is_empty(m):
+                        rr, zz = np.meshgrid([radii[i], radii[i + 1]], [zs[j], zs[j + 1]])
+                        add(rr * np.cos(angle), rr * np.sin(angle), zz, m)
 
     x, y, z = setup.source
     traces.append(go.Scatter3d(x=[x], y=[y], z=[z], mode="markers", name="Source",

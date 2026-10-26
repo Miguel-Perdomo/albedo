@@ -80,10 +80,17 @@ def _read_toml(path: Path) -> dict:
 
 
 def shield_volumes(cfg: dict) -> list[Volume]:
-    """Cavity, liner layers and body of a cylindrical shield."""
+    """Cavity, optional bottom hole, liner layers and body of a shield.
+
+    The bottom hole is an empty cylinder on the axis that goes through the
+    floor of the shield, liner included.
+    """
     r = cfg["cavity_diameter"] / 2.0
     h = cfg["cavity_height"]
+    cap = (cfg["outer_height"] - h) / 2.0
     volumes = [Volume("cavity", None, r, 0.0, h)]
+    if "bottom_hole_diameter" in cfg:
+        volumes.append(Volume("bottom_hole", None, cfg["bottom_hole_diameter"] / 2.0, -cap, 0.0))
 
     t = 0.0
     for layer in cfg.get("liner", []):
@@ -91,7 +98,6 @@ def shield_volumes(cfg: dict) -> list[Volume]:
         volumes.append(Volume(f"liner_{layer['material']}", layer["material"], r + t, -t, h + t))
 
     outer_r = cfg["outer_diameter"] / 2.0
-    cap = (cfg["outer_height"] - h) / 2.0
     if outer_r <= r + t or cap <= t:
         raise ValueError("shield body is thinner than the liner")
     volumes.append(Volume("body", cfg["body"], outer_r, -cap, h + cap))

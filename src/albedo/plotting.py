@@ -127,9 +127,17 @@ def plot_spectrum(ax, energy, counts, *, label=None, color=None, logy=False, **k
     return ax
 
 
-def save(fig, name: str, directory: str | Path = "figures", formats=("pdf", "png")) -> list[Path]:
-    """Save ``fig`` as ``directory/name.<fmt>`` for every format given."""
-    directory = Path(directory)
+def figures_dir() -> Path:
+    """Default output folder for figures: ``figures/`` at the project root."""
+    return Path(__file__).resolve().parents[2] / "figures"
+
+
+def save(fig, name: str, directory: str | Path | None = None, formats=("pdf", "png")) -> list[Path]:
+    """Save ``fig`` as ``directory/name.<fmt>`` for every format given.
+
+    ``directory`` defaults to ``figures/`` at the project root.
+    """
+    directory = figures_dir() if directory is None else Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     paths = [directory / f"{name}.{fmt}" for fmt in formats]
     for path in paths:

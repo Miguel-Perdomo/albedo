@@ -3,14 +3,18 @@
 # Lengths in cm. Cavity dimensions refer to the free volume inside the
 # liner. The cavity height was measured on the shield in use; the other
 # dimensions are from Cristancho, Posada and Cuero, "Spectral structure in
-# gamma-ray backscattering" (preprint), Fig. 1.
+# gamma-ray backscattering" (preprint), Fig. 1. Lid and floor are assumed
+# to have the same thickness.
 name = "Canberra 747E"
 
 cavity_diameter = 27.9
 cavity_height   = 30.2    # measured
 outer_diameter  = 50.8
-outer_height    = 63.5
+outer_height    = 42.0
 body = "Pb"
+
+# Opening through the floor, on the axis (for HPGe cryostats).
+bottom_hole_diameter = 11.5
 
 # Graded liner covering wall, lid and floor, from the cavity outwards.
 liner = [

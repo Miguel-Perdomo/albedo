@@ -39,7 +39,8 @@ def test_locate_each_region(setup, geo):
         (r0 + 0.5 * CU, 0.0, 15.0): "liner_Cu",
         (r0 + CU + 0.5 * SN, 0.0, 15.0): "liner_Sn",
         (r0 + 5.0, 0.0, 15.0): "body",
-        (0.0, 0.0, -0.5 * CU): "liner_Cu",
+        (8.0, 0.0, -0.5 * CU): "liner_Cu",
+        (0.0, 0.0, -5.0): "bottom_hole",
     }
     for p, expected in cases.items():
         assert setup.volumes[geo.locate(p)].name == expected
@@ -60,9 +61,9 @@ def test_vertical_ray_down_from_source(setup, geo):
     body = setup.volumes[setup.volume_index("body")]
     zs = setup.source[2]
     segs = geo.trace(setup.source, (0.0, 0.0, -1.0))
-    assert names(setup, segs) == ["cavity", "detector", "cavity", "liner_Cu", "liner_Sn", "body"]
+    assert names(setup, segs) == ["cavity", "detector", "cavity", "bottom_hole"]
     lengths = [length for _, length in segs]
-    expected = [zs - det.z_max, det.z_max - det.z_min, det.z_min, CU, SN, -CU - SN - body.z_min]
+    expected = [zs - det.z_max, det.z_max - det.z_min, det.z_min, -body.z_min]
     assert lengths == pytest.approx(expected, abs=1e-6)
 
 
@@ -95,6 +96,19 @@ def test_isotropic_paths_end_on_outer_surface(setup, geo):
             t_side = (-b + np.sqrt(b * b - a * c)) / a
         t_cap = (body.z_max - p[2]) / d[2] if d[2] > 0 else (body.z_min - p[2]) / d[2]
         assert total == pytest.approx(min(t_side, t_cap), abs=1e-5)
+
+
+def test_bottom_hole(setup, geo):
+    hole = setup.volumes[setup.volume_index("bottom_hole")]
+    body = setup.volumes[setup.volume_index("body")]
+    assert hole.radius == pytest.approx(5.75)
+    # Straight down the axis from the cavity there is no floor at all
+    segs = geo.trace((0.0, 0.0, 5.0), (0.0, 0.0, -1.0))
+    assert names(setup, segs) == ["cavity", "bottom_hole"]
+    assert sum(length for _, length in segs) == pytest.approx(5.0 - body.z_min, abs=1e-6)
+    # Off-axis, beyond the hole, the full floor is still there
+    segs = geo.trace((8.0, 0.0, 5.0), (0.0, 0.0, -1.0))
+    assert names(setup, segs) == ["cavity", "liner_Cu", "liner_Sn", "body"]
 
 
 def test_detector_outside_cavity_is_rejected(tmp_path):
