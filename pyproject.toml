@@ -1,0 +1,19 @@
+[build-system]
+requires = ["scikit-build-core>=0.10", "pybind11>=2.12"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "albedo"
+version = "0.1.0"
+description = "Monte Carlo photon transport for understanding gamma-ray spectrum formation"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Miguel Andrés Perdomo Gutiérrez", email = "mperdomog@unal.edu.co" }]
+dependencies = ["numpy", "pandas", "matplotlib"]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[tool.scikit-build]
+cmake.build-type = "Release"
+wheel.packages = ["src/albedo"]
