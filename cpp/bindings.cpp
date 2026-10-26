@@ -13,6 +13,7 @@
 #include "kinematics.hpp"
 #include "random.hpp"
 #include "source.hpp"
+#include "transport.hpp"
 #include "vec3.hpp"
 
 namespace py = pybind11;
@@ -56,6 +57,24 @@ std::array<double, 3> rotate_py(const std::array<double, 3>& d, double cos_theta
 }
 
 }  // namespace
+
+namespace pybind11::detail {
+// Accept any 3-element sequence where a Vec3 is expected.
+template <>
+struct type_caster<Vec3> {
+    PYBIND11_TYPE_CASTER(Vec3, const_name("Vec3"));
+    bool load(handle src, bool convert) {
+        make_caster<std::array<double, 3>> inner;
+        if (!inner.load(src, convert)) return false;
+        const auto& v = cast_op<const std::array<double, 3>&>(inner);
+        value = {v[0], v[1], v[2]};
+        return true;
+    }
+    static handle cast(const Vec3& v, return_value_policy, handle) {
+        return py::make_tuple(v.x, v.y, v.z).release();
+    }
+};
+}  // namespace pybind11::detail
 
 PYBIND11_MODULE(_core, m) {
     m.doc() = "ALBEDO transport core";
@@ -132,4 +151,36 @@ PYBIND11_MODULE(_core, m) {
                  return out;
              },
              py::arg("n"), py::arg("seed"), "Draw n photon energies (keV).");
+
+    py::class_<Transport>(m, "Transport")
+        .def(py::init<Geometry, std::vector<AttenuationTable>, LineSampler, Vec3, int, double>(),
+             py::arg("geometry"), py::arg("tables"), py::arg("source"),
+             py::arg("source_position"), py::arg("detector_volume"), py::arg("energy_cut"))
+        .def("run",
+             [](const Transport& t, std::uint64_t n, std::uint64_t seed) {
+                 std::vector<Event> events;
+                 {
+                     py::gil_scoped_release release;
+                     events = t.run(n, seed);
+                 }
+                 const auto size = static_cast<py::ssize_t>(events.size());
+                 py::array_t<double> deposited(size), emitted(size);
+                 py::array_t<int> origin(size);
+                 auto a = deposited.mutable_unchecked<1>();
+                 auto b = emitted.mutable_unchecked<1>();
+                 auto c = origin.mutable_unchecked<1>();
+                 for (py::ssize_t i = 0; i < size; ++i) {
+                     const auto& ev = events[static_cast<std::size_t>(i)];
+                     a(i) = ev.deposited;
+                     b(i) = ev.emitted;
+                     c(i) = ev.origin;
+                 }
+                 py::dict out;
+                 out["deposited"] = deposited;
+                 out["emitted"] = emitted;
+                 out["origin"] = origin;
+                 return out;
+             },
+             py::arg("n"), py::arg("seed"),
+             "Run n histories; returns arrays for the events that hit the detector.");
 }

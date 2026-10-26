@@ -16,6 +16,7 @@ from __future__ import annotations
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
+from .response import Resolution
 
 CONFIG_DIR = Path(__file__).resolve().parents[2] / "configs"
 
@@ -41,6 +42,7 @@ class Setup:
     name: str
     volumes: tuple[Volume, ...]
     source: tuple[float, float, float]
+    resolution: Resolution | None = None
 
     @property
     def material_names(self) -> list[str]:
@@ -124,7 +126,10 @@ def load_setup(name: str | Path) -> Setup:
 
     shield = shield_volumes(_read_toml(CONFIG_DIR / "shields" / f"{cfg['shield']}.toml"))
     face = cfg["detector_face_height"]
-    detector = detector_volume(_read_toml(CONFIG_DIR / "detectors" / f"{cfg['detector']}.toml"), face)
+    detector_cfg = _read_toml(CONFIG_DIR / "detectors" / f"{cfg['detector']}.toml")
+    detector = detector_volume(detector_cfg, face)
+    resolution = (Resolution.from_config(detector_cfg["resolution"])
+                  if "resolution" in detector_cfg else None)
     source_z = face + cfg["source_distance"]
 
     cavity = shield[0]
@@ -137,4 +142,5 @@ def load_setup(name: str | Path) -> Setup:
     if not (cfg["source_distance"] > 0.0 and source_z < cavity.z_max):
         raise ValueError("source must lie between the detector face and the lid")
 
-    return Setup(name=path.stem, volumes=(detector, *shield), source=(0.0, 0.0, source_z))
+    return Setup(name=path.stem, volumes=(detector, *shield), source=(0.0, 0.0, source_z),
+                 resolution=resolution)

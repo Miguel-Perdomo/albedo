@@ -3,3 +3,10 @@ name = "CsI(Tl) 0.5 in x 2 in"
 material = "CsI"
 diameter = 1.27   # cm
 length   = 5.08   # cm
+
+# FWHM(E) = a sqrt(E) + b E, E in keV. PMT at 700 V, shaping time 6 us.
+[resolution]
+model = "sqrt_linear"
+a = 2.18     # keV^(1/2), +- 0.03
+b = 0.023    # +- 0.004
+reference = "GFN-UN detector characterisation notes (CsI 0.5 x 2 in - PMT)"
