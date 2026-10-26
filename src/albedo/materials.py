@@ -114,6 +114,11 @@ class Material:
             self.density * self.incoherent,
             self.density * self.photoelectric,
         )
+    def attenuation_table(self):
+        """Build the C++ ``AttenuationTable`` used by the transport code."""
+        from ._core import AttenuationTable
+
+        return AttenuationTable(*self.linear_table())    
 
 
 def load_materials(path: str | Path | None = None) -> dict[str, Material]:
