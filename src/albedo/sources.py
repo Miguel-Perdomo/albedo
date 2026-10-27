@@ -28,6 +28,21 @@ from .materials import DATA_DIR
 
 SOURCES_DIR = DATA_DIR / "sources"
 
+_SECONDS = {"s": 1.0, "min": 60.0, "h": 3600.0, "d": 86400.0, "a": 365.25 * 86400.0}
+
+
+def _half_life_seconds(header: dict[str, list[str]]) -> float | None:
+    """Half-life in seconds from the 'Half-life (unit)' header lines."""
+    values = {}
+    for key, fields in header.items():
+        if key.startswith("Half-life (") and fields:
+            unit = key[len("Half-life ("):-1]
+            if unit in _SECONDS:
+                values[unit] = float(fields[0]) * _SECONDS[unit]
+    if not values:
+        return None
+    return values.get("s", next(iter(values.values())))
+
 
 def read_lara(path: str | Path) -> tuple[dict[str, list[str]], list[dict]]:
     """Read a Nucleide-Lara text file.
@@ -85,6 +100,7 @@ class Source:
     intensity: np.ndarray  # photons per 100 decays
     kind: tuple[str, ...]
     origin: tuple[str, ...]
+    half_life: float | None = None  # s
 
     @property
     def photons_per_decay(self) -> float:
@@ -132,4 +148,6 @@ def load_source(nuclide: str, min_energy: float = 10.0, min_intensity: float = 0
         intensity=np.array([x["intensity"] for x in kept]),
         kind=tuple(x["type"] for x in kept),
         origin=tuple(x["origin"] for x in kept),
-    )
+        half_life=_half_life_seconds(header),
+    )        
+    

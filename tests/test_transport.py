@@ -89,3 +89,10 @@ def test_liner_increases_backscatter(tmp_path):
 
     n_lined, n_pb = backscatter(lined), backscatter(pb_only)
     assert n_lined > 2.0 * n_pb, (n_lined, n_pb)
+
+
+def test_simulation_csv(tmp_path):
+    r = simulate("csi_747E", "Cs-137", 200_000, seed=1)
+    data = np.loadtxt(r.to_csv(tmp_path / "sim.csv", bin_width=2.0), delimiter=",")
+    assert data[:, 3].sum() == np.sum(r.deposited < data[-1, 1])
+    assert data.shape[1] == 5 + len(r.components())

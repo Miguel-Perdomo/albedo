@@ -14,6 +14,7 @@ every history that deposited energy in the detector:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 
@@ -77,6 +78,35 @@ class SimulationResult:
             values = values[mask]
         counts, _ = np.histogram(values, bins=edges)
         return 0.5 * (edges[:-1] + edges[1:]), counts
+
+    def to_csv(self, path: str | Path, bin_width: float = 1.0, e_max: float | None = None,
+               seed: int = 0) -> Path:
+        """Save the simulated spectrum: deposited and broadened counts per bin.
+
+        Columns: bin limits and centre (keV), deposited counts, counts after
+        the detector resolution, and the broadened counts of each origin.
+        """
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        energy, deposited = self.spectrum(bin_width, e_max)
+        edges = np.append(energy - 0.5 * bin_width, energy[-1] + 0.5 * bin_width)
+        columns = [edges[:-1], edges[1:], energy, deposited]
+        names = ["e_low", "e_high", "energy", "deposited"]
+        if self.setup.resolution is not None:
+            columns.append(self.spectrum(bin_width, e_max, smear=True, seed=seed)[1])
+            names.append("smeared")
+            for name, mask in self.components().items():
+                columns.append(self.spectrum(bin_width, e_max, mask=mask, smear=True, seed=seed)[1])
+                names.append(f"smeared_{name}")
+        header = "\n".join([
+            f"source: {self.source.nuclide} ({self.source.reference})",
+            f"setup: {self.setup.name}",
+            f"histories: {self.n_histories}  seed: {self.seed}  decays: {self.decays:.6g}",
+            f"detected: {len(self.deposited)}  efficiency: {self.efficiency:.6g}",
+            ",".join(names),
+        ])
+        np.savetxt(path, np.column_stack(columns), delimiter=",", header=header, fmt="%.6g")
+        return path
 
 
 def simulate(setup: Setup | str, source: Source | str, n_histories: int, seed: int = 1,

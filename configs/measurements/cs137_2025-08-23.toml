@@ -1,0 +1,22 @@
+# Cs-137 measured with the CsI(Tl) 0.5 in x 2 in inside the Canberra 747E.
+# PMT 700 V, shaping time 6 us, gain 120. Start 2025-08-23 13:34:18.
+spectrum   = "CsI1x5_ST6us_700V_1h_G120_Cs137-100mm_2.txt"
+background = "CsI1x5_ST6us_700V_2h_G120_fondo.txt"   # 2025-08-26, 2 h live
+source = "Cs-137"
+setup  = "csi_747E"
+
+# Peaks for the energy calibration: energy (keV) and channel window.
+# 32.94 keV is the intensity-weighted mean of the Ba K X-rays (LNHB 2023).
+calibration = [
+    { energy = 32.94,   window = [15, 45] },
+    { energy = 661.657, window = [560, 680] },
+]
+
+# Energy window (keV) used to scale the simulation when the activity is not given.
+normalization = [600.0, 720.0]
+
+# Source D-110-20. Activity from the GFN-UN source table.
+[activity]
+value = 22.1                  # kBq
+uncertainty = 0.2             # kBq
+reference_date = "2026-07-21"
